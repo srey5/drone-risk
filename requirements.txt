@@ -1,0 +1,19 @@
+# --- Web & UI ---
+streamlit
+folium
+streamlit-folium
+
+# --- Core Math & GPU ---
+numpy
+scipy
+taichi
+
+# --- Geospatial ---
+geopandas
+shapely>=2.0
+rasterio
+pyproj
+
+# --- Dev Tools ---
+ruff
+pytest
