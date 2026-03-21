@@ -5,3 +5,5 @@ __pycache__/
 *.tif
 *.tiff
 .DS_Store
+cache/
+CLAUDE.md

@@ -14,6 +14,32 @@ from core.engine.pathfinding import weighted_astar
 from core.engine.physics import compute_risk_kernel
 
 
+def bounds_from_points(
+    start: tuple[float, float],
+    end: tuple[float, float],
+    padding: float = 0.2,
+) -> dict[str, float]:
+    """Build a bounding box around two lat/lon points with proportional padding."""
+    lat_min = min(start[0], end[0])
+    lat_max = max(start[0], end[0])
+    lon_min = min(start[1], end[1])
+    lon_max = max(start[1], end[1])
+
+    lat_span = lat_max - lat_min
+    lon_span = lon_max - lon_min
+
+    # Ensure a minimum span so two close points still produce a usable grid
+    lat_pad = max(lat_span * padding, 0.002)
+    lon_pad = max(lon_span * padding, 0.002)
+
+    return {
+        "south": lat_min - lat_pad,
+        "north": lat_max + lat_pad,
+        "west": lon_min - lon_pad,
+        "east": lon_max + lon_pad,
+    }
+
+
 def calculate_risk_area(
     bounds: dict[str, float],
     drone_params: dict[str, float],
