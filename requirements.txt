@@ -13,6 +13,7 @@ geopandas
 shapely>=2.0
 rasterio
 pyproj
+osmnx
 
 # --- Dev Tools ---
 ruff
