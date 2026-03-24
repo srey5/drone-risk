@@ -112,6 +112,15 @@ def find_optimal_path(
     rm_max = float(risk_map.max())
     risk_norm = (risk_map - rm_min) / (rm_max - rm_min + 1e-9)
 
+    # Block the boundary margin so A* cannot hug the edges of the bounding box.
+    # Edge cells have artificially low risk (the Gaussian PDF contributes little
+    # that far from its centre), making them a free corridor the algorithm exploits.
+    border = max(2, min(rows, cols) // 10)
+    risk_norm[:border, :] = 1.0
+    risk_norm[-border:, :] = 1.0
+    risk_norm[:, :border] = 1.0
+    risk_norm[:, -border:] = 1.0
+
     def latlon_to_grid(lat: float, lon: float) -> tuple[int, int]:
         row = int((bounds["north"] - lat) / (bounds["north"] - bounds["south"]) * rows)
         col = int((lon - bounds["west"]) / (bounds["east"] - bounds["west"]) * cols)

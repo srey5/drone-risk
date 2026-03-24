@@ -110,8 +110,8 @@ if st.session_state["risk_map"] is not None and st.session_state["bounds_list"] 
 
     colormap = matplotlib.colormaps["inferno"]
     color_image = colormap(rm_norm)
-    color_image[rm_norm < 0.05, 3] = 0.0
-    color_image[rm_norm >= 0.05, 3] = 1.0
+    color_image[:, :, 3] = rm_norm ** 0.5  # smooth fade: high risk opaque, low risk transparent
+    color_image[rm_norm < 0.05, 3] = 0.0   # hide near-zero noise entirely
 
     folium.raster_layers.ImageOverlay(
         image=color_image,
