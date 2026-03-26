@@ -23,6 +23,12 @@ The following capabilities are planned for future iterations:
 
 ---
 
+## Inspiration & Prior Work
+
+This project builds on the research and open-source work of [seedpod_ground_risk](https://github.com/aliaksei135/seedpod_ground_risk) by Aliaksei Pilko, which provides a rigorous probabilistic framework for UAS ground risk modelling. The risk convolution approach and population exposure methodology used here draw conceptually from that body of work, described in the accompanying [JOSS publication](https://joss.theoj.org/papers/10.21105/joss.04079).
+
+---
+
 ## Architecture & Tech Stack
 
 | Layer | Technology |
