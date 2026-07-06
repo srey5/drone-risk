@@ -4,7 +4,9 @@
 FROM nvcr.io/nvidia/isaac-lab:2.3.2
 
 # ── Environment ──────────────────────────────────────────────────────────────
+ENV ACCEPT_EULA=Y
 ENV DEBIAN_FRONTEND=noninteractive
+
 ENV PYTHONUNBUFFERED=1
 # Put the project root on the Python path so `from sim_api.omni_runner` resolves
 ENV PYTHONPATH=/workspace/drone-risk:${PYTHONPATH}
