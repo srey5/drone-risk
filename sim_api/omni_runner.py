@@ -21,6 +21,7 @@ try:
     from isaaclab.sim import SimulationContext
     # pyrefly: ignore [missing-import]
     from isaaclab.assets import RigidObject, RigidObjectCfg
+    from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR
 
     HAS_ISAAC = True
 except ImportError as e:
@@ -63,7 +64,7 @@ if HAS_ISAAC:
     crazyflie_cfg = RigidObjectCfg(
         prim_path="/World/Crazyflie",
         spawn=sim_utils.UsdFileCfg(
-            usd_path="http://omega-usd.s3-us-west-2.amazonaws.com/Robots/Bitcraze/Crazyflie/cf2x.usd",
+            usd_path=f"{ISAAC_NUCLEUS_DIR}/Robots/Bitcraze/Crazyflie/cf2x.usd",
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 rigid_body_enabled=True,
                 solver_position_iteration_count=4,
