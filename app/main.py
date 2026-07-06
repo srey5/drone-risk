@@ -2,25 +2,58 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+# pyrefly: ignore [missing-import]
 import streamlit as st
+# pyrefly: ignore [missing-import]
 import folium
-from streamlit_folium import st_folium
-import matplotlib
+# pyrefly: ignore [missing-import]
 from folium.plugins import Draw
+# pyrefly: ignore [missing-import]
+from streamlit_folium import st_folium
+# pyrefly: ignore [missing-import]
+import matplotlib
 
 from core.engine.interface import (
-    bounds_from_points,
     calculate_risk_area,
     find_optimal_path,
 )
 
 # --- Page Configuration ---
-st.set_page_config(page_title="UAS Ground Risk Analyzer", layout="wide")
+st.set_page_config(page_title="UAS Pathfinding and Risk Analysis", layout="wide")
+
+# --- CSS: remove default Streamlit chrome, tighten padding ---
+st.markdown("""
+<style>
+    header[data-testid="stHeader"] { display: none; }
+    footer { display: none; }
+
+    .block-container {
+        padding-top: 0.75rem;
+        padding-bottom: 0rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    [data-testid="stMarkdownContainer"] p {
+        margin-bottom: 0.25rem;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # --- State Initialization ---
-for key in ("start_point", "end_point", "risk_map", "bounds_list", "bounds", "path_latlon"):
+for key in ("start_point", "end_point", "risk_map", "bounds_list", "bounds", "path_latlon", "sim_telemetry", "sim_summary"):
     if key not in st.session_state:
         st.session_state[key] = None
+
+if "map_center" not in st.session_state:
+    st.session_state["map_center"] = [51.3360, -0.2670]
+if "map_zoom" not in st.session_state:
+    st.session_state["map_zoom"] = 13
+if "last_processed_drawing" not in st.session_state:
+    st.session_state["last_processed_drawing"] = None
+
+has_start = st.session_state["start_point"] is not None
+has_end = st.session_state["end_point"] is not None
 
 # --- Sidebar ---
 st.sidebar.title("UAS Ground Risk Analyzer")
@@ -59,15 +92,21 @@ with st.sidebar.expander("Environmental Parameters", expanded=False):
     wind_dir = st.slider("Wind Direction (degrees)", 0, 360, 90)
 
 st.sidebar.markdown("---")
+
+simulate_btn = False
+if st.session_state["path_latlon"] is not None:
+    simulate_btn = st.sidebar.button(
+        "Simulate in OmniDrones", type="primary", use_container_width=True
+    )
+    st.sidebar.markdown("---")
+
 if st.sidebar.button("Reset Points"):
-    for key in ("start_point", "end_point", "risk_map", "bounds_list", "bounds", "path_latlon"):
+    for key in ("start_point", "end_point", "risk_map", "bounds_list", "bounds", "path_latlon", "sim_telemetry", "sim_summary"):
         st.session_state[key] = None
+    st.session_state["last_processed_drawing"] = None
     st.rerun()
 
-# --- Build Map ---
-has_start = st.session_state["start_point"] is not None
-has_end = st.session_state["end_point"] is not None
-
+# --- Status caption ---
 if has_start and has_end:
     st.caption("Start and End points set. Adjust parameters and click Calculate.")
 elif has_start:
@@ -75,21 +114,27 @@ elif has_start:
 else:
     st.caption("Drop a Start marker and an End marker, then click Calculate.")
 
-m = folium.Map(location=[51.3360, -0.2670], zoom_start=13)
+# --- Build Map ---
+# Always restore the last known viewport so the map does not snap on rerun.
+m = folium.Map(
+    location=st.session_state["map_center"],
+    zoom_start=st.session_state["map_zoom"],
+)
+
+# Marker-only Draw plugin — all other tools disabled.
 Draw(
     export=False,
     draw_options={
-        "polygon": False,
-        "rectangle": False,
         "marker": True,
+        "polygon": False,
+        "polyline": False,
+        "rectangle": False,
         "circle": False,
         "circlemarker": False,
-        "polyline": False,
     },
-    edit_options={"remove": True},
 ).add_to(m)
 
-# Re-inject persisted waypoints onto the map
+# Re-inject persisted waypoints as Folium markers so they survive reruns.
 if has_start:
     folium.Marker(
         location=st.session_state["start_point"],
@@ -110,8 +155,8 @@ if st.session_state["risk_map"] is not None and st.session_state["bounds_list"] 
 
     colormap = matplotlib.colormaps["inferno"]
     color_image = colormap(rm_norm)
-    color_image[:, :, 3] = rm_norm ** 0.5  # smooth fade: high risk opaque, low risk transparent
-    color_image[rm_norm < 0.05, 3] = 0.0   # hide near-zero noise entirely
+    color_image[:, :, 3] = rm_norm ** 0.5
+    color_image[rm_norm < 0.05, 3] = 0.0
 
     folium.raster_layers.ImageOverlay(
         image=color_image,
@@ -123,44 +168,101 @@ if st.session_state["risk_map"] is not None and st.session_state["bounds_list"] 
 
 # Path overlay
 if st.session_state["path_latlon"] is not None:
-    path_coords = st.session_state["path_latlon"]
     folium.PolyLine(
-        locations=path_coords,
+        locations=st.session_state["path_latlon"],
         color="#00e5ff",
         weight=3,
         opacity=0.9,
         tooltip="Optimal Path",
     ).add_to(m)
 
-st_data = st_folium(
-    m, height=700, use_container_width=True, returned_objects=["all_drawings"]
-)
+# Simulated Path overlay
+if st.session_state["sim_telemetry"] is not None:
+    sim_coords = [(t["lat"], t["lon"]) for t in st.session_state["sim_telemetry"]]
+    folium.PolyLine(
+        locations=sim_coords,
+        color="#ff9100",
+        weight=3,
+        opacity=0.85,
+        tooltip="Simulated Path (OmniDrones)",
+        dash_array="5, 5",
+    ).add_to(m)
 
-# --- Capture new markers from the draw layer ---
+if st.session_state["sim_summary"] is not None:
+    col1, col2 = st.columns([0.65, 0.35])
+    with col1:
+        st_data = st_folium(
+            m, height=650, use_container_width=True,
+            returned_objects=["all_drawings", "center", "zoom"],
+        )
+    with col2:
+        st.subheader("Simulation Results")
+        
+        summary = st.session_state["sim_summary"]
+        
+        # Display key metrics in a neat layout
+        m1, m2 = st.columns(2)
+        m1.metric("Flight Time", f"{summary['total_flight_time_sec']} s")
+        m2.metric("Distance", f"{summary['total_distance_flown_m']} m")
+        
+        m3, m4 = st.columns(2)
+        m3.metric("Avg Speed", f"{summary['average_speed_m_s']} m/s")
+        m4.metric("Battery Used", f"{summary['battery_used_pct']} %")
+        
+        m5, m6 = st.columns(2)
+        m5.metric("Max Deviation", f"{summary['max_deviation_m']} m")
+        
+        status_color = "normal"
+        status_text = "SUCCESS"
+        if summary["collision_detected"]:
+            status_text = "COLLISION"
+            status_color = "inverse"
+        m6.metric("Flight Status", status_text, delta="Collision!" if summary["collision_detected"] else None, delta_color=status_color)
+        
+        st.markdown("---")
+        st.markdown("#### Telemetry Charts")
+        
+        import pandas as pd
+        telemetry_df = pd.DataFrame(st.session_state["sim_telemetry"])
+        
+        # Plot Speed and Battery
+        st.caption("Speed Profile (m/s) vs Time (s)")
+        st.line_chart(telemetry_df, x="timestamp", y="speed", height=130)
+        
+        st.caption("Battery Level (%) vs Time (s)")
+        st.line_chart(telemetry_df, x="timestamp", y="battery", height=130)
+else:
+    st_data = st_folium(
+        m, height=650, use_container_width=True,
+        returned_objects=["all_drawings", "center", "zoom"],
+    )
+
+# Persist viewport so the map rebuilds at the same position after every rerun.
+if st_data:
+    if st_data.get("center"):
+        c = st_data["center"]
+        st.session_state["map_center"] = [c["lat"], c["lng"]]
+    if st_data.get("zoom"):
+        st.session_state["map_zoom"] = st_data["zoom"]
+
+# --- Marker capture ---
+# Without a stable component key the Draw layer resets on every rerun, so
+# all_drawings only ever contains markers placed in the current interaction.
 drawings = (st_data or {}).get("all_drawings") or []
-new_markers = [
-    d for d in drawings
-    if d.get("geometry", {}).get("type") == "Point"
-]
+new_markers = [d for d in drawings if d.get("geometry", {}).get("type") == "Point"]
 
 if new_markers:
-    # Assign markers in order: first new marker fills start, second fills end
-    if not has_start:
-        c = new_markers[0]["geometry"]["coordinates"]
-        st.session_state["start_point"] = (c[1], c[0])
-        if len(new_markers) >= 2:
-            c2 = new_markers[1]["geometry"]["coordinates"]
-            st.session_state["end_point"] = (c2[1], c2[0])
-        st.rerun()
-    elif not has_end:
-        c = new_markers[0]["geometry"]["coordinates"]
-        st.session_state["end_point"] = (c[1], c[0])
-        st.rerun()
-    else:
-        # Both already set; latest marker replaces end point
-        c = new_markers[-1]["geometry"]["coordinates"]
-        st.session_state["end_point"] = (c[1], c[0])
-        st.rerun()
+    coord_key = tuple(round(v, 6) for v in new_markers[-1]["geometry"]["coordinates"])
+    if coord_key != st.session_state["last_processed_drawing"]:
+        st.session_state["last_processed_drawing"] = coord_key
+        if not has_start:
+            c = new_markers[0]["geometry"]["coordinates"]
+            st.session_state["start_point"] = (c[1], c[0])
+            st.rerun()
+        elif not has_end:
+            c = new_markers[0]["geometry"]["coordinates"]
+            st.session_state["end_point"] = (c[1], c[0])
+            st.rerun()
 
 # --- Calculation Logic ---
 if calculate_btn:
@@ -168,10 +270,24 @@ if calculate_btn:
     end_pt = st.session_state["end_point"]
 
     if start_pt is None or end_pt is None:
-        st.warning("Place exactly two markers on the map: a Start point and an End point.")
+        st.warning("Place a Start marker and an End marker on the map before calculating.")
         st.stop()
 
-    bounds = bounds_from_points(start_pt, end_pt, padding=0.2)
+    st.session_state["sim_telemetry"] = None
+    st.session_state["sim_summary"] = None
+
+    center_lat = (start_pt[0] + end_pt[0]) / 2.0
+    center_lon = (start_pt[1] + end_pt[1]) / 2.0
+    lat_diff = abs(start_pt[0] - end_pt[0])
+    lon_diff = abs(start_pt[1] - end_pt[1])
+    radius_deg = max(lat_diff / 2.0, lon_diff / 2.0) + 0.008
+    radius_deg = min(radius_deg, 0.022)  # clamp to keep area under ~20 sq km
+    bounds = {
+        "north": center_lat + radius_deg,
+        "south": center_lat - radius_deg,
+        "east":  center_lon + radius_deg,
+        "west":  center_lon - radius_deg,
+    }
 
     drone_params = {
         "mass": input_mass,
@@ -209,3 +325,46 @@ if calculate_btn:
         st.session_state["path_latlon"] = path
 
     st.rerun()
+
+# --- Simulation Logic Execution ---
+if st.session_state["path_latlon"] is not None and simulate_btn:
+    import requests
+    SIM_API_URL = os.getenv("SIM_API_URL", "http://localhost:8000")
+    
+    # Prepare waypoints
+    waypoints = []
+    for lat, lon in st.session_state["path_latlon"]:
+        waypoints.append({
+            "lat": lat,
+            "lon": lon,
+            "alt": input_alt
+        })
+        
+    drone_params = {
+        "mass": input_mass,
+        "width": input_width,
+        "speed": input_speed,
+        "alt": input_alt,
+        "wind_speed": wind_speed,
+        "wind_dir": wind_dir,
+    }
+    
+    payload = {
+        "waypoints": waypoints,
+        "speed": input_speed,
+        "drone_params": drone_params
+    }
+    
+    with st.spinner("Running OmniDrones physics simulation..."):
+        try:
+            response = requests.post(f"{SIM_API_URL}/simulate_path", json=payload, timeout=30)
+            if response.status_code == 200:
+                res = response.json()
+                st.session_state["sim_telemetry"] = res.get("telemetry")
+                st.session_state["sim_summary"] = res.get("summary")
+                st.toast("Simulation finished!", icon="🚁")
+                st.rerun()
+            else:
+                st.error(f"Simulation API returned error {response.status_code}: {response.text}")
+        except Exception as e:
+            st.error(f"Failed to connect to simulation API: {e}")
