@@ -35,7 +35,7 @@ fi
 
 # ── 2. Install FastAPI deps into Isaac Lab's Python ───────────────────────────
 echo "[2/4] Installing FastAPI + Uvicorn into Isaac Lab Python environment..."
-"$ISAAC_PYTHON" -p -m pip install --no-cache-dir fastapi>=0.100.0 uvicorn>=0.22.0 pydantic>=2.0.0
+"$ISAAC_PYTHON" -p -m pip install -r requirements.txt
 
 # ── 3. Verify Isaac Lab can import omni modules ───────────────────────────────
 echo "[3/4] Verifying Isaac Lab omni imports..."
@@ -50,8 +50,5 @@ echo ""
 echo "  Ctrl+C to stop. Re-run this script to restart."
 echo ""
 
-PYTHONPATH="$REPO_DIR:${PYTHONPATH:-}" \
-    "$ISAAC_PYTHON" -p -m uvicorn sim_api.main:app \
-    --host 0.0.0.0 \
-    --port "$PORT" \
-    --log-level info
+    export PORT="$PORT"
+    "$ISAAC_PYTHON" -p run_server.py
