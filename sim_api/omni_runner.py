@@ -128,6 +128,7 @@ def simulate_flight_isaac(
     vel_tensor = torch.tensor([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]], device=crazyflie.device)
     crazyflie.write_root_pose_to_sim(pos_tensor)
     crazyflie.write_root_velocity_to_sim(vel_tensor)
+    crazyflie.write_data_to_sim()
     crazyflie.reset()
     
     telemetry = []
@@ -238,6 +239,7 @@ def simulate_flight_isaac(
         
         crazyflie.write_root_pose_to_sim(pos_tensor)
         crazyflie.write_root_velocity_to_sim(vel_tensor)
+        crazyflie.write_data_to_sim()
         
         # Step simulation physics context
         sim.step()
