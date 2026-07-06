@@ -20,7 +20,7 @@ try:
     # pyrefly: ignore [missing-import]
     from isaaclab.sim import SimulationContext
     # pyrefly: ignore [missing-import]
-    from isaaclab.assets import Articulation, ArticulationCfg
+    from isaaclab.assets import RigidObject, RigidObjectCfg
 
     HAS_ISAAC = True
 except ImportError as e:
@@ -60,7 +60,7 @@ if HAS_ISAAC:
     gp_cfg.func("/World/defaultGroundPlane", gp_cfg)
 
     # Configure Crazyflie drone asset
-    crazyflie_cfg = ArticulationCfg(
+    crazyflie_cfg = RigidObjectCfg(
         prim_path="/World/Crazyflie",
         spawn=sim_utils.UsdFileCfg(
             usd_path="http://omega-usd.s3-us-west-2.amazonaws.com/Robots/Bitcraze/Crazyflie/cf2x.usd",
@@ -72,13 +72,13 @@ if HAS_ISAAC:
                 disable_gravity=True,  # Disable gravity to run kinematic-dynamics overlay control
             ),
         ),
-        init_state=ArticulationCfg.InitialStateCfg(
+        init_state=RigidObjectCfg.InitialStateCfg(
             pos=(0.0, 0.0, 1.0)
         )
     )
 
-    # Instantiate Articulation
-    crazyflie = Articulation(crazyflie_cfg)
+    # Instantiate RigidObject
+    crazyflie = RigidObject(crazyflie_cfg)
     sim.reset()
     print("Isaac Lab Environment initialized successfully.")
 
