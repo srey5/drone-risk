@@ -2,6 +2,8 @@
 streamlit
 folium
 streamlit-folium
+google-genai
+python-dotenv
 
 # --- Core Math & GPU ---
 numpy

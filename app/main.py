@@ -40,8 +40,11 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+from dotenv import load_dotenv
+load_dotenv()
+
 # --- State Initialization ---
-for key in ("start_point", "end_point", "risk_map", "bounds_list", "bounds", "path_latlon", "sim_telemetry", "sim_summary"):
+for key in ("start_point", "end_point", "risk_map", "bounds_list", "bounds", "path_latlon", "sim_telemetry", "sim_summary", "chat_history"):
     if key not in st.session_state:
         st.session_state[key] = None
 
@@ -368,3 +371,62 @@ if st.session_state["path_latlon"] is not None and simulate_btn:
                 st.error(f"Simulation API returned error {response.status_code}: {response.text}")
         except Exception as e:
             st.error(f"Failed to connect to simulation API: {e}")
+
+# --- AI Co-Pilot ---
+from core.agent.gemini_copilot import get_copilot_response
+
+if st.session_state.get("chat_history") is None:
+    st.session_state["chat_history"] = []
+
+st.markdown("---")
+st.subheader("🤖 Mission Co-Pilot")
+
+# Create a container for the chat history
+chat_container = st.container(height=400)
+
+with chat_container:
+    for message in st.session_state["chat_history"]:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+# Chat input
+if prompt := st.chat_input("Ask the AI Co-Pilot about the mission or simulation..."):
+    # Append user message
+    st.session_state["chat_history"].append({"role": "user", "content": prompt})
+    
+    with chat_container:
+        with st.chat_message("user"):
+            st.markdown(prompt)
+            
+        with st.chat_message("assistant"):
+            with st.spinner("Analyzing mission context..."):
+                # Gather context
+                context = {
+                    "drone_parameters": {
+                        "mass": input_mass,
+                        "width": input_width,
+                        "cruise_speed": input_speed,
+                        "cruise_altitude": input_alt,
+                    },
+                    "environmental_parameters": {
+                        "wind_speed": wind_speed,
+                        "wind_direction": wind_dir
+                    },
+                    "mission_status": "Planning" if st.session_state["sim_summary"] is None else "Simulated",
+                }
+                
+                if st.session_state["start_point"]:
+                    context["start_waypoint"] = st.session_state["start_point"]
+                if st.session_state["end_point"]:
+                    context["end_waypoint"] = st.session_state["end_point"]
+                if st.session_state["path_latlon"]:
+                    context["total_waypoints_in_path"] = len(st.session_state["path_latlon"])
+                if st.session_state["sim_summary"]:
+                    context["simulation_summary"] = st.session_state["sim_summary"]
+                
+                # Get response
+                response = get_copilot_response(prompt, context, st.session_state["chat_history"][:-1])
+                st.markdown(response)
+                
+    # Append assistant message
+    st.session_state["chat_history"].append({"role": "assistant", "content": response})
