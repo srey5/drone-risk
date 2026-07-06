@@ -241,6 +241,7 @@ def simulate_flight_isaac(
         
         # Step simulation physics context
         sim.step()
+        crazyflie.update(dt)
         
         # Retrieve computed simulation updates (resolves PhysX interactions)
         sim_pos = crazyflie.data.root_pos_w[0].cpu().numpy()
