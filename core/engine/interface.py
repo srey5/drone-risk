@@ -29,8 +29,8 @@ def bounds_from_points(
     lon_span = lon_max - lon_min
 
     # Ensure a minimum span so two close points still produce a usable grid
-    lat_pad = max(lat_span * padding, 0.002)
-    lon_pad = max(lon_span * padding, 0.002)
+    lat_pad = max(lat_span * padding, 0.01)
+    lon_pad = max(lon_span * padding, 0.01)
 
     return {
         "south": lat_min - lat_pad,

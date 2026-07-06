@@ -7,7 +7,7 @@ HAS_ISAAC = False
 try:
     # Launch simulation app first before importing other omni modules
     # pyrefly: ignore [missing-import]
-    from omni.isaac.lab.app import AppLauncher
+    from isaaclab.app import AppLauncher
 
     # Setup AppLauncher in headless mode
     app_launcher = AppLauncher(headless=True)
@@ -16,11 +16,11 @@ try:
     # pyrefly: ignore [missing-import]
     import torch
     # pyrefly: ignore [missing-import]
-    import omni.isaac.lab.sim as sim_utils
+    import isaaclab.sim as sim_utils
     # pyrefly: ignore [missing-import]
-    from omni.isaac.lab.sim import SimulationContext
+    from isaaclab.sim import SimulationContext
     # pyrefly: ignore [missing-import]
-    from omni.isaac.lab.assets import Articulation, ArticulationCfg
+    from isaaclab.assets import Articulation, ArticulationCfg
 
     HAS_ISAAC = True
 except ImportError as e:

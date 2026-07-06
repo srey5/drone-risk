@@ -14,7 +14,7 @@
 
 set -euo pipefail
 
-REPO_URL="https://github.com/YOUR_USERNAME/drone-risk.git"   # ← replace with your GitHub URL
+REPO_URL="https://github.com/srey5/drone-risk.git"   # ← replace with your GitHub URL
 REPO_DIR="/workspace/drone-risk"
 ISAAC_PYTHON="/workspace/isaaclab/isaaclab.sh"
 PORT=8000
@@ -39,7 +39,7 @@ echo "[2/4] Installing FastAPI + Uvicorn into Isaac Lab Python environment..."
 
 # ── 3. Verify Isaac Lab can import omni modules ───────────────────────────────
 echo "[3/4] Verifying Isaac Lab omni imports..."
-"$ISAAC_PYTHON" -p -c "from omni.isaac.lab.app import AppLauncher; print('  ✓ omni.isaac.lab imports OK')"
+"$ISAAC_PYTHON" -p -c "from isaaclab.app import AppLauncher; print('  ✓ isaaclab imports OK')"
 
 # ── 4. Start the FastAPI server ───────────────────────────────────────────────
 echo "[4/4] Starting FastAPI server on port $PORT..."
