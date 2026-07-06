@@ -61,7 +61,7 @@ def root():
     }
 
 @app.post("/simulate_path")
-def simulate_path(request: SimulationRequest):
+async def simulate_path(request: SimulationRequest):
     """
     Simulates drone flight path using Isaac Sim / OmniDrones physics.
     Accepts GPS waypoints, cruise speed, and drone parameters.

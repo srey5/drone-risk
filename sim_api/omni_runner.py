@@ -249,8 +249,8 @@ def simulate_flight_isaac(
         sim_pos = crazyflie.data.root_pos_w[0].cpu().numpy()
         sim_vel = crazyflie.data.root_vel_w[0, 0:3].cpu().numpy()
         
-        curr_x, curr_y, curr_z = sim_pos[0], sim_pos[1], sim_pos[2]
-        curr_vx, curr_vy, curr_vz = sim_vel[0], sim_vel[1], sim_vel[2]
+        curr_x, curr_y, curr_z = curr_x, curr_y, curr_z
+        curr_vx, curr_vy, curr_vz = curr_vx, curr_vy, curr_vz
         
         # Track cross track error
         p_start = local_wps[wp_idx-1]
