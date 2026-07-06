@@ -52,6 +52,14 @@ def health_check():
     """Simple health check endpoint."""
     return {"status": "ok", "service": "sim_api"}
 
+@app.get("/")
+def root():
+    """Root endpoint to prevent 404 when visiting the base URL."""
+    return {
+        "message": "OmniDrones Simulation API is running successfully on RunPod!", 
+        "docs": "Append /docs to the URL to view the Swagger UI."
+    }
+
 @app.post("/simulate_path")
 def simulate_path(request: SimulationRequest):
     """
